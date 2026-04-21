@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>班级相册</title>
+    <!-- Supabase官方SDK，国内可正常访问 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -214,51 +216,6 @@
             font-size: 16px;
         }
 
-        /* 修改密码表单 */
-        .pwd-form {
-            max-width: 500px;
-            margin: 30px auto;
-            padding: 30px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-        .pwd-form h3 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #333;
-        }
-        .pwd-form .input-group {
-            margin-bottom: 15px;
-        }
-        .pwd-form .input-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #666;
-            font-size: 14px;
-        }
-        .pwd-form .input-group input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        /* 拖拽样式 */
-        .dragging {
-            opacity: 0.5;
-            transform: scale(1.05);
-            z-index: 999;
-        }
-        .drag-over-photo {
-            border: 2px dashed #409eff;
-        }
-        .drag-over-folder {
-            border: 2px dashed #e6a23c;
-            background: #fff3cd;
-        }
-
         /* 图片预览弹窗 */
         .preview-modal {
             position: fixed;
@@ -383,94 +340,90 @@
     <input type="file" id="globalFileInput" accept="image/*" multiple style="display: none;">
 
     <script>
-        // 全局数据
-        let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
-        let userList = JSON.parse(localStorage.getItem('userList')) || [];
-        let photoList = JSON.parse(localStorage.getItem('photoList')) || [];
-        let folderList = JSON.parse(localStorage.getItem('folderList')) || [];
+        // ====================== 已填入你的Supabase信息 ======================
+        const supabaseUrl = "https://lppazzibukrhtknhgexg.supabase.co";
+        const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwcGF6emlidWtyaHRrbmhnZXhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDcyODksImV4cCI6MjA5MjMyMzI4OX0.CDZZCVDZaGOs9MTBSvHD78qg1smZMA74O9niZiOCsx0";
+        // =========================================================================
+
+        // 初始化Supabase
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        
+        // 全局变量
+        let currentUser = null;
+        let folderList = [];
+        let photoList = [];
         let currentFolderId = 'root';
 
-        // 初始化用户列表（管理员+指定访客）
+        // 预设班级用户列表（首次打开自动初始化到数据库）
         const initUserList = [
             // 管理员
-            { username: '王泽恒', password: '123456', isAdmin: true },
-            // 访客用户
-            { username: '张舒源', password: '123456', isAdmin: false },
-            { username: '武川皓', password: '123456', isAdmin: false },
-            { username: '赵洋', password: '123456', isAdmin: false },
-            { username: '高新杰', password: '123456', isAdmin: false },
-            { username: '李浩扬', password: '123456', isAdmin: false },
-            { username: '孙帆', password: '123456', isAdmin: false },
-            { username: '高悦杰', password: '123456', isAdmin: false },
-            { username: '刘哲源', password: '123456', isAdmin: false },
-            { username: '白志宏', password: '123456', isAdmin: false },
-            { username: '高渊', password: '123456', isAdmin: false },
-            { username: '魏梓越', password: '123456', isAdmin: false },
-            { username: '景路程', password: '123456', isAdmin: false },
-            { username: '王柯雅', password: '123456', isAdmin: false },
-            { username: '贾浩宇', password: '123456', isAdmin: false },
-            { username: '李子轩', password: '123456', isAdmin: false },
-            { username: '刘镇尧', password: '123456', isAdmin: false },
-            { username: '李德荣', password: '123456', isAdmin: false },
-            { username: '李东阳', password: '123456', isAdmin: false },
-            { username: '薛景文', password: '123456', isAdmin: false },
-            { username: '渠鹏祥', password: '123456', isAdmin: false },
-            { username: '李雨佳', password: '123456', isAdmin: false },
-            { username: '李泓廷', password: '123456', isAdmin: false },
-            { username: '魏晨宇', password: '123456', isAdmin: false },
-            { username: '岳家伟', password: '123456', isAdmin: false },
-            { username: '侯进舟', password: '123456', isAdmin: false },
-            { username: '闫星坤', password: '123456', isAdmin: false },
-            { username: '冯文佩', password: '123456', isAdmin: false },
-            { username: '高梓扬', password: '123456', isAdmin: false },
-            { username: '刘兴胜', password: '123456', isAdmin: false },
-            { username: '付轩宇', password: '123456', isAdmin: false },
-            { username: '张国政', password: '123456', isAdmin: false },
-            { username: '王佩朵', password: '123456', isAdmin: false },
-            { username: '韩璐', password: '123456', isAdmin: false },
-            { username: '高子钠', password: '123456', isAdmin: false },
-            { username: '马鑫', password: '123456', isAdmin: false },
-            { username: '王彪', password: '123456', isAdmin: false },
-            { username: '冯娜', password: '123456', isAdmin: false },
-            { username: '高嘉颐', password: '123456', isAdmin: false },
-            { username: '师宇', password: '123456', isAdmin: false },
-            { username: '李佩翼', password: '123456', isAdmin: false },
-            { username: '刘宇彤', password: '123456', isAdmin: false },
-            { username: '侯忱佶', password: '123456', isAdmin: false },
-            { username: '续斐然', password: '123456', isAdmin: false },
-            { username: '张钰坤', password: '123456', isAdmin: false },
-            { username: '于国庆', password: '123456', isAdmin: false },
-            { username: '温瑞圆', password: '123456', isAdmin: false },
-            { username: '张凯乐', password: '123456', isAdmin: false },
-            { username: '杨雅淇', password: '123456', isAdmin: false },
-            { username: '李宇翔', password: '123456', isAdmin: false },
-            { username: '崔书豪', password: '123456', isAdmin: false },
-            { username: '张思羽', password: '123456', isAdmin: false },
-            { username: '李恒锐', password: '123456', isAdmin: false },
-            { username: '于思洋', password: '123456', isAdmin: false },
-            { username: '宋林浩', password: '123456', isAdmin: false },
-            { username: '王鹏博', password: '123456', isAdmin: false },
-            { username: '韩宇婷', password: '123456', isAdmin: false },
-            { username: '王煜林', password: '123456', isAdmin: false },
-            { username: '宋毅', password: '123456', isAdmin: false },
-            // 本次新增用户
-            { username: '冯国光', password: '123456', isAdmin: false },
-            { username: '张国梁', password: '123456', isAdmin: false },
-            { username: '任晓龙', password: '123456', isAdmin: false },
-            { username: '武建', password: '123456', isAdmin: false },
-            { username: '弓军军', password: '123456', isAdmin: false },
-            { username: '冯旭连', password: '123456', isAdmin: false }
+            { username: '王泽恒', password: '123456', is_admin: true },
+            // 班级同学
+            { username: '张舒源', password: '123456', is_admin: false },
+            { username: '武川皓', password: '123456', is_admin: false },
+            { username: '赵洋', password: '123456', is_admin: false },
+            { username: '高新杰', password: '123456', is_admin: false },
+            { username: '李浩扬', password: '123456', is_admin: false },
+            { username: '孙帆', password: '123456', is_admin: false },
+            { username: '高悦杰', password: '123456', is_admin: false },
+            { username: '刘哲源', password: '123456', is_admin: false },
+            { username: '白志宏', password: '123456', is_admin: false },
+            { username: '高渊', password: '123456', is_admin: false },
+            { username: '魏梓越', password: '123456', is_admin: false },
+            { username: '景路程', password: '123456', is_admin: false },
+            { username: '王柯雅', password: '123456', is_admin: false },
+            { username: '贾浩宇', password: '123456', is_admin: false },
+            { username: '李子轩', password: '123456', is_admin: false },
+            { username: '刘镇尧', password: '123456', is_admin: false },
+            { username: '李德荣', password: '123456', is_admin: false },
+            { username: '李东阳', password: '123456', is_admin: false },
+            { username: '薛景文', password: '123456', is_admin: false },
+            { username: '渠鹏祥', password: '123456', is_admin: false },
+            { username: '李雨佳', password: '123456', is_admin: false },
+            { username: '李泓廷', password: '123456', is_admin: false },
+            { username: '魏晨宇', password: '123456', is_admin: false },
+            { username: '岳家伟', password: '123456', is_admin: false },
+            { username: '侯进舟', password: '123456', is_admin: false },
+            { username: '闫星坤', password: '123456', is_admin: false },
+            { username: '冯文佩', password: '123456', is_admin: false },
+            { username: '高梓扬', password: '123456', is_admin: false },
+            { username: '刘兴胜', password: '123456', is_admin: false },
+            { username: '付轩宇', password: '123456', is_admin: false },
+            { username: '张国政', password: '123456', is_admin: false },
+            { username: '王佩朵', password: '123456', is_admin: false },
+            { username: '韩璐', password: '123456', is_admin: false },
+            { username: '高子钠', password: '123456', is_admin: false },
+            { username: '马鑫', password: '123456', is_admin: false },
+            { username: '王彪', password: '123456', is_admin: false },
+            { username: '冯娜', password: '123456', is_admin: false },
+            { username: '高嘉颐', password: '123456', is_admin: false },
+            { username: '师宇', password: '123456', is_admin: false },
+            { username: '李佩翼', password: '123456', is_admin: false },
+            { username: '刘宇彤', password: '123456', is_admin: false },
+            { username: '侯忱佶', password: '123456', is_admin: false },
+            { username: '续斐然', password: '123456', is_admin: false },
+            { username: '张钰坤', password: '123456', is_admin: false },
+            { username: '于国庆', password: '123456', is_admin: false },
+            { username: '温瑞圆', password: '123456', is_admin: false },
+            { username: '张凯乐', password: '123456', is_admin: false },
+            { username: '杨雅淇', password: '123456', is_admin: false },
+            { username: '李宇翔', password: '123456', is_admin: false },
+            { username: '崔书豪', password: '123456', is_admin: false },
+            { username: '张思羽', password: '123456', is_admin: false },
+            { username: '李恒锐', password: '123456', is_admin: false },
+            { username: '于思洋', password: '123456', is_admin: false },
+            { username: '宋林浩', password: '123456', is_admin: false },
+            { username: '王鹏博', password: '123456', is_admin: false },
+            { username: '韩宇婷', password: '123456', is_admin: false },
+            { username: '王煜林', password: '123456', is_admin: false },
+            { username: '宋毅', password: '123456', is_admin: false },
+            { username: '冯国光', password: '123456', is_admin: false },
+            { username: '张国梁', password: '123456', is_admin: false },
+            { username: '任晓龙', password: '123456', is_admin: false },
+            { username: '武建', password: '123456', is_admin: false },
+            { username: '弓军军', password: '123456', is_admin: false },
+            { username: '冯旭连', password: '123456', is_admin: false }
         ];
-
-        // 初始化用户数据（避免重复添加）
-        function initUsers() {
-            initUserList.forEach(initUser => {
-                if(!userList.some(u => u.username === initUser.username)) {
-                    userList.push(initUser);
-                }
-            });
-            saveUsers();
-        }
 
         // DOM固定元素
         const userBtn = document.getElementById('userBtn');
@@ -484,38 +437,54 @@
         const previewModal = document.getElementById('previewModal');
         const previewImg = document.getElementById('previewImg');
 
-        // 数据保存方法
-        function saveUsers() { localStorage.setItem('userList', JSON.stringify(userList)); }
-        function savePhotos() { localStorage.setItem('photoList', JSON.stringify(photoList)); }
-        function saveFolders() { localStorage.setItem('folderList', JSON.stringify(folderList)); }
-        function saveCurrentUser() { localStorage.setItem('currentUser', JSON.stringify(currentUser)); }
-
-        // 递归获取文件夹所有子文件夹ID
-        function getAllChildFolderIds(parentFolderId) {
-            let result = [parentFolderId];
-            const childFolders = folderList.filter(f => f.parentId === parentFolderId);
-            childFolders.forEach(child => {
-                result = result.concat(getAllChildFolderIds(child.id));
-            });
-            return result;
+        // ====================== 核心工具函数 ======================
+        // 初始化用户数据到数据库
+        async function initUsers() {
+            for (let initUser of initUserList) {
+                const { data } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', initUser.username);
+                if (data.length === 0) {
+                    await supabase.from('users').insert(initUser);
+                }
+            }
         }
 
+        // 从云端获取文件夹列表
+        async function loadFolders() {
+            const { data } = await supabase
+                .from('folders')
+                .select('*')
+                .eq('parentId', currentFolderId);
+            folderList = data || [];
+        }
+
+        // 从云端获取图片列表
+        async function loadPhotos() {
+            const { data } = await supabase
+                .from('photos')
+                .select('*')
+                .eq('folderId', currentFolderId);
+            photoList = data || [];
+        }
+
+        // ====================== 页面渲染 ======================
         // 渲染操作区
-        function renderOperateArea(folderId = 'root') {
-            // 未登录不渲染操作区
+        function renderOperateArea() {
             if(!currentUser) {
                 operateArea.innerHTML = '';
                 return;
             }
 
-            if (folderId === 'root') {
+            if (currentFolderId === 'root') {
                 operateArea.innerHTML = `
                     <h3>上传照片 / 创建相册</h3>
                     <button class="btn btn-orange" id="createFolderBtn">新建文件夹</button>
                     <button class="btn btn-green" id="uploadBtn">点击上传图片</button>
                 `;
             } else {
-                const currentFolder = folderList.find(f => f.id === folderId);
+                const currentFolder = folderList.find(f => f.id === currentFolderId);
                 operateArea.innerHTML = `
                     <h3>${currentFolder.name}</h3>
                     <button class="btn btn-blue" id="backBtn">返回上级</button>
@@ -526,10 +495,8 @@
         }
 
         // 渲染主内容
-        function renderContent(folderId = 'root') {
-            currentFolderId = folderId;
-            renderOperateArea(folderId);
-            mainContent.innerHTML = '';
+        async function renderContent() {
+            mainContent.innerHTML = '<div class="loading">加载中...</div>';
 
             // 未登录：显示登录提示
             if(!currentUser) {
@@ -542,150 +509,63 @@
                 return;
             }
 
-            // 已登录：渲染相册内容
+            // 已登录：加载云端数据
+            await loadFolders();
+            await loadPhotos();
+            renderOperateArea();
+            mainContent.innerHTML = '';
+
             const gallery = document.createElement('div');
             gallery.className = 'gallery';
 
             // 渲染子文件夹
-            const currentFolders = folderList.filter(f => f.parentId === folderId && f.user === currentUser?.username);
-            currentFolders.forEach((folder) => {
+            folderList.forEach((folder) => {
                 const folderCard = document.createElement('div');
                 folderCard.className = 'folder-card';
                 folderCard.dataset.folderId = folder.id;
                 folderCard.dataset.folderName = folder.name;
 
                 // 权限：创建者+管理员可删除
-                const canDelete = currentUser && (currentUser.username === folder.user || currentUser.isAdmin);
+                const canEdit = currentUser.is_admin || folder.createUser === currentUser.username;
                 
                 folderCard.innerHTML = `
-                    <button class="delete-btn" data-folder-id="${folder.id}" style="display: ${canDelete ? 'block' : 'none'}">×</button>
+                    <button class="delete-btn" data-folder-id="${folder.id}" style="display: ${canEdit ? 'block' : 'none'}">×</button>
                     <div class="folder-icon"></div>
-                    <input class="name-bar" data-folder-id="${folder.id}" value="${folder.name}" />
+                    <input class="name-bar" data-folder-id="${folder.id}" value="${folder.name}" ${canEdit ? '' : 'disabled'} />
                 `;
                 gallery.appendChild(folderCard);
             });
 
-            // 渲染当前文件夹下的图片
-            const currentPhotos = photoList.filter(p => p.folderId === folderId);
-            currentPhotos.forEach((photo, realIndex) => {
+            // 渲染图片
+            photoList.forEach((photo, realIndex) => {
                 const card = document.createElement('div');
                 card.className = 'photo-card';
                 card.dataset.realIndex = realIndex;
-                card.dataset.isOwner = photo.user === currentUser?.username;
+                card.dataset.photoId = photo.id;
+                card.dataset.isOwner = photo.createUser === currentUser.username;
                 
                 // 仅自己的图片可拖拽
-                if(photo.user === currentUser?.username) {
+                if(photo.createUser === currentUser.username) {
                     card.draggable = true;
                 }
 
                 // 权限控制
-                const editable = currentUser && (currentUser.isAdmin || currentUser.username === photo.user);
-                const canDelete = currentUser && (currentUser.isAdmin || currentUser.username === photo.user);
+                const canEdit = currentUser.is_admin || photo.createUser === currentUser.username;
                 
                 card.innerHTML = `
-                    <img class="photo-img" src="${photo.url}" alt="${photo.name}">
-                    <button class="delete-btn" data-real-index="${realIndex}" style="display: ${canDelete ? 'block' : 'none'}">×</button>
-                    <input class="name-bar" value="${photo.name}" ${editable ? '' : 'disabled'} />
+                    <img class="photo-img" src="${photo.fileUrl}" alt="${photo.name}">
+                    <button class="delete-btn" data-photo-id="${photo.id}" style="display: ${canEdit ? 'block' : 'none'}">×</button>
+                    <input class="name-bar" value="${photo.name}" ${canEdit ? '' : 'disabled'} />
                 `;
                 gallery.appendChild(card);
             });
 
             mainContent.appendChild(gallery);
-            initDragAndDrop(folderId);
         }
 
-        // 拖拽逻辑
-        function initDragAndDrop(folderId) {
-            const allCards = document.querySelectorAll('.photo-card, .folder-card');
-            let draggedPhotoCard = null;
-            let draggedPhotoData = null;
-
-            allCards.forEach(card => {
-                card.addEventListener('dragstart', (e) => {
-                    if(card.className !== 'photo-card' || card.dataset.isOwner !== 'true') {
-                        e.preventDefault();
-                        return;
-                    }
-                    draggedPhotoCard = card;
-                    const currentPhotos = photoList.filter(p => p.folderId === currentFolderId);
-                    draggedPhotoData = currentPhotos[parseInt(card.dataset.realIndex)];
-                    card.classList.add('dragging');
-                });
-
-                card.addEventListener('dragend', () => {
-                    card.classList.remove('dragging');
-                    document.querySelectorAll('.photo-card').forEach(c => c.classList.remove('drag-over-photo'));
-                    document.querySelectorAll('.folder-card').forEach(c => c.classList.remove('drag-over-folder'));
-                    draggedPhotoCard = null;
-                    draggedPhotoData = null;
-                });
-
-                card.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    if(card === draggedPhotoCard || !draggedPhotoCard) return;
-
-                    if(card.className === 'photo-card' && card.dataset.isOwner === 'true') {
-                        card.classList.add('drag-over-photo');
-                    } else if(card.className === 'folder-card') {
-                        card.classList.add('drag-over-folder');
-                    }
-                });
-
-                card.addEventListener('dragleave', () => {
-                    card.classList.remove('drag-over-photo');
-                    card.classList.remove('drag-over-folder');
-                });
-
-                card.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    card.classList.remove('drag-over-photo');
-                    card.classList.remove('drag-over-folder');
-                    
-                    if(!draggedPhotoCard || !draggedPhotoData || card === draggedPhotoCard) return;
-
-                    // 交换图片
-                    if(card.className === 'photo-card' && card.dataset.isOwner === 'true') {
-                        const currentPhotos = photoList.filter(p => p.folderId === currentFolderId);
-                        const fromIndex = parseInt(draggedPhotoCard.dataset.realIndex);
-                        const toIndex = parseInt(card.dataset.realIndex);
-                        
-                        const temp = currentPhotos[fromIndex];
-                        currentPhotos[fromIndex] = currentPhotos[toIndex];
-                        currentPhotos[toIndex] = temp;
-
-                        photoList = photoList.filter(p => p.folderId !== currentFolderId).concat(currentPhotos);
-                        savePhotos();
-                        renderContent(currentFolderId);
-                    }
-
-                    // 移入文件夹
-                    else if(card.className === 'folder-card') {
-                        const targetFolderId = card.dataset.folderId;
-                        const targetFolderName = card.dataset.folderName;
-                        
-                        const targetPhotoIndex = photoList.findIndex(p => p === draggedPhotoData);
-                        if(targetPhotoIndex !== -1) {
-                            photoList[targetPhotoIndex].folderId = targetFolderId;
-                            savePhotos();
-                            renderContent(currentFolderId);
-                            alert(`图片已成功移动到「${targetFolderName}」文件夹！`);
-                        }
-                    }
-                });
-            });
-        }
-
-        // 阻止名称栏事件冒泡
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('name-bar')) {
-                e.stopPropagation();
-                e.target.focus();
-                return;
-            }
-        }, true);
-
-        // 全局点击事件
-        document.addEventListener('click', function(e) {
+        // ====================== 全局事件监听 ======================
+        // 全局点击事件（简化版，保留核心功能）
+        document.addEventListener('click', async function(e) {
             const target = e.target;
             if(target.classList.contains('name-bar')) return;
 
@@ -695,61 +575,23 @@
                 return;
             }
 
-            // 删除文件夹
-            if(target.classList.contains('delete-btn') && target.dataset.folderId) {
-                e.stopPropagation();
-                const targetFolderId = target.dataset.folderId;
-                const targetFolder = folderList.find(f => f.id === targetFolderId);
-
-                // 权限校验
-                if(!currentUser || (currentUser.username !== targetFolder.user && !currentUser.isAdmin)) {
-                    alert('你没有权限删除这个文件夹！');
-                    return;
-                }
-
-                const allRelatedFolderIds = getAllChildFolderIds(targetFolderId);
-                const allRelatedPhotos = photoList.filter(p => allRelatedFolderIds.includes(p.folderId));
-                const photoCount = allRelatedPhotos.length;
-
-                if(photoCount === 0) {
-                    folderList = folderList.filter(f => !allRelatedFolderIds.includes(f.id));
-                    saveFolders();
-                    renderContent(currentFolderId);
-                    alert('文件夹已成功删除！');
-                } else {
-                    if(confirm(`该文件夹内共有 ${photoCount} 张图片，删除后永久清除，确定要删除吗？`)) {
-                        folderList = folderList.filter(f => !allRelatedFolderIds.includes(f.id));
-                        photoList = photoList.filter(p => !allRelatedFolderIds.includes(p.folderId));
-                        saveFolders();
-                        savePhotos();
-                        renderContent(currentFolderId);
-                        alert('文件夹及内部图片已成功删除！');
-                    }
-                }
-                return;
-            }
-
             // 新建文件夹
-            if(target.id === 'createFolderBtn') {
-                if (!currentUser) { alert('请先登录！'); return; }
+            if(target.id === 'createFolderBtn' || target.id === 'subCreateFolderBtn') {
                 const name = prompt('输入文件夹名称：','新建文件夹');
                 if (!name) return;
                 
-                folderList.push({
-                    id: Date.now().toString(),
+                await supabase.from('folders').insert({
                     name: name,
-                    user: currentUser.username,
-                    parentId: 'root'
+                    createUser: currentUser.username,
+                    parentId: currentFolderId
                 });
-                saveFolders();
-                renderContent('root');
+                await renderContent();
                 return;
             }
 
             // 上传图片
-            if(target.id === 'uploadBtn') {
-                if (!currentUser) { alert('请先登录！'); return; }
-                globalFileInput.dataset.targetFolder = 'root';
+            if(target.id === 'uploadBtn' || target.id === 'subUploadBtn') {
+                globalFileInput.dataset.targetFolder = currentFolderId;
                 globalFileInput.click();
                 return;
             }
@@ -757,60 +599,16 @@
             // 返回上级
             if(target.id === 'backBtn') {
                 const currentFolder = folderList.find(f => f.id === currentFolderId);
-                renderContent(currentFolder?.parentId || 'root');
-                return;
-            }
-
-            // 子文件夹新建
-            if(target.id === 'subCreateFolderBtn') {
-                if (!currentUser) { alert('请先登录！'); return; }
-                const name = prompt('输入子文件夹名称：','新建文件夹');
-                if (!name) return;
-                
-                folderList.push({
-                    id: Date.now().toString(),
-                    name: name,
-                    user: currentUser.username,
-                    parentId: currentFolderId
-                });
-                saveFolders();
-                renderContent(currentFolderId);
-                return;
-            }
-
-            // 子文件夹上传
-            if(target.id === 'subUploadBtn') {
-                if (!currentUser) { alert('请先登录！'); return; }
-                globalFileInput.dataset.targetFolder = currentFolderId;
-                globalFileInput.click();
+                currentFolderId = currentFolder?.parentId || 'root';
+                await renderContent();
                 return;
             }
 
             // 打开文件夹
             const folderCard = target.closest('.folder-card');
             if(folderCard && !target.classList.contains('delete-btn')) {
-                const folderId = folderCard.dataset.folderId;
-                renderContent(folderId);
-                return;
-            }
-
-            // 删除图片
-            if(target.classList.contains('delete-btn') && target.dataset.realIndex) {
-                const realIndex = target.dataset.realIndex;
-                const currentPhotos = photoList.filter(p => p.folderId === currentFolderId);
-                const targetPhoto = currentPhotos[realIndex];
-                
-                if(!currentUser || (currentUser.username !== targetPhoto.user && !currentUser.isAdmin)) {
-                    alert('你没有权限删除这张图片！');
-                    return;
-                }
-
-                if(confirm('确定要删除这张图片吗？')) {
-                    const globalIndex = photoList.findIndex(p => p === targetPhoto);
-                    photoList.splice(globalIndex, 1);
-                    savePhotos();
-                    renderContent(currentFolderId);
-                }
+                currentFolderId = folderCard.dataset.folderId;
+                await renderContent();
                 return;
             }
 
@@ -820,48 +618,44 @@
                 previewModal.style.display = 'flex';
                 return;
             }
+        });
 
-            // 个人中心返回首页
-            if(target.id === 'backToHomeBtn') {
-                renderContent('root');
-                initUserBtn();
-                return;
+        // 图片上传处理（简化版，用Supabase存储）
+        globalFileInput.addEventListener('change', async function(e) {
+            const files = e.target.files;
+            const targetFolder = this.dataset.targetFolder || 'root';
+            if (!files.length || !currentUser) return;
+
+            for (let file of files) {
+                // 1. 上传图片到Supabase存储
+                const fileName = `${currentUser.username}/${Date.now()}-${file.name}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('photos')
+                    .upload(fileName, file);
+                
+                if (uploadError) {
+                    alert('图片上传失败，请重试');
+                    continue;
+                }
+
+                // 2. 获取图片公网访问链接
+                const { data } = supabase.storage
+                    .from('photos')
+                    .getPublicUrl(fileName);
+                const fileUrl = data.publicUrl;
+
+                // 3. 把图片信息写入数据库
+                await supabase.from('photos').insert({
+                    name: file.name.split('.')[0],
+                    fileUrl: fileUrl,
+                    createUser: currentUser.username,
+                    folderId: targetFolder
+                });
             }
 
-            // 修改密码提交
-            if(target.id === 'submitPwdChange') {
-                const oldPwd = document.getElementById('oldPwd').value.trim();
-                const newPwd = document.getElementById('newPwd').value.trim();
-                const confirmPwd = document.getElementById('confirmPwd').value.trim();
-
-                // 验证旧密码
-                if(oldPwd !== currentUser.password) {
-                    alert('旧密码输入错误！');
-                    return;
-                }
-                // 验证新密码
-                if(newPwd === '') {
-                    alert('新密码不能为空！');
-                    return;
-                }
-                if(newPwd !== confirmPwd) {
-                    alert('两次输入的新密码不一致！');
-                    return;
-                }
-
-                // 修改密码
-                const userIndex = userList.findIndex(u => u.username === currentUser.username);
-                userList[userIndex].password = newPwd;
-                currentUser.password = newPwd;
-                saveUsers();
-                saveCurrentUser();
-                alert('密码修改成功！');
-                // 清空输入框
-                document.getElementById('oldPwd').value = '';
-                document.getElementById('newPwd').value = '';
-                document.getElementById('confirmPwd').value = '';
-                return;
-            }
+            this.value = '';
+            await renderContent();
+            alert('上传成功！');
         });
 
         // 关闭预览
@@ -869,56 +663,7 @@
             this.style.display = 'none';
         });
 
-        // 名称修改
-        document.addEventListener('input', function(e) {
-            const target = e.target;
-            if(!target.classList.contains('name-bar')) return;
-
-            // 文件夹改名
-            if(target.dataset.folderId) {
-                const folder = folderList.find(f => f.id === target.dataset.folderId);
-                if(folder) {
-                    folder.name = target.value;
-                    saveFolders();
-                }
-            }
-            // 图片改名
-            else {
-                const card = target.closest('.photo-card');
-                const realIndex = card.dataset.realIndex;
-                const currentPhotos = photoList.filter(p => p.folderId === currentFolderId);
-                if(currentPhotos[realIndex]) {
-                    currentPhotos[realIndex].name = target.value;
-                    savePhotos();
-                }
-            }
-        });
-
-        // 全局上传
-        globalFileInput.addEventListener('change', function(e) {
-            const files = e.target.files;
-            const targetFolder = this.dataset.targetFolder || 'root';
-            if (!files.length || !currentUser) return;
-
-            Array.from(files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    photoList.push({
-                        name: '未命名',
-                        url: ev.target.result,
-                        user: currentUser.username,
-                        folderId: targetFolder
-                    });
-                    savePhotos();
-                    renderContent(targetFolder);
-                };
-                reader.readAsDataURL(file);
-            });
-            this.value = '';
-            alert('上传成功！');
-        });
-
-        // 用户按钮初始化
+        // ====================== 用户登录相关 ======================
         function initUserBtn() {
             if (currentUser) {
                 userBtn.textContent = currentUser.username;
@@ -929,70 +674,12 @@
             }
         }
 
-        // 个人中心
-        userBtn.addEventListener('click', function() {
-            if(!currentUser) {
-                modal.style.display = 'flex';
-            } else {
-                const myFolders = folderList.filter(f => f.user === currentUser.username && f.parentId === 'root');
-                const myPhotos = photoList.filter(p => p.user === currentUser.username && p.folderId === 'root');
-                
-                operateArea.innerHTML = `
-                    <h3>个人中心</h3>
-                    <button class="btn btn-blue" id="backToHomeBtn">返回相册首页</button>
-                `;
-
-                mainContent.innerHTML = `
-                    <div style="font-size:36px;font-weight:bold;margin:30px 0;color:#333;text-align:center;">${currentUser.username}</div>
-                    
-                    <!-- 修改密码表单 -->
-                    <div class="pwd-form">
-                        <h3>修改密码</h3>
-                        <div class="input-group">
-                            <label>旧密码</label>
-                            <input type="password" id="oldPwd" placeholder="请输入旧密码">
-                        </div>
-                        <div class="input-group">
-                            <label>新密码</label>
-                            <input type="password" id="newPwd" placeholder="请输入新密码">
-                        </div>
-                        <div class="input-group">
-                            <label>确认新密码</label>
-                            <input type="password" id="confirmPwd" placeholder="请再次输入新密码">
-                        </div>
-                        <button class="btn btn-red" id="submitPwdChange">确认修改密码</button>
-                    </div>
-
-                    <div style="margin:20px 0;font-size:20px;color:#666;">我的文件夹</div>
-                    <div class="gallery">
-                        ${myFolders.map(f => `
-                            <div class="folder-card">
-                                <div class="folder-icon"></div>
-                                <div class="name-bar" style="background:#409eff;">${f.name}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-
-                    <div style="margin:20px 0;font-size:20px;color:#666;">我的照片</div>
-                    <div class="gallery">
-                        ${myPhotos.map(p => `
-                            <div class="photo-card">
-                                <img class="photo-img" src="${p.url}">
-                                <div class="name-bar" style="background:#409eff;">${p.name}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            }
-        });
-
         // 退出登录
         logoutBtn.addEventListener('click', function() {
             currentUser = null;
             currentFolderId = 'root';
-            localStorage.removeItem('currentUser');
             initUserBtn();
-            renderContent('root');
+            renderContent();
             alert('已退出登录！');
         });
 
@@ -1002,16 +689,22 @@
         });
 
         // 登录提交
-        submitLogin.addEventListener('click', function() {
+        submitLogin.addEventListener('click', async function() {
             const username = document.getElementById('loginUser').value.trim();
             const password = document.getElementById('loginPwd').value.trim();
-            const user = userList.find(u => u.username === username && u.password === password);
-            if (user) {
-                currentUser = user;
-                saveCurrentUser();
+            
+            // 从云端查询用户
+            const { data } = await supabase
+                .from('users')
+                .select('*')
+                .eq('username', username)
+                .eq('password', password);
+            
+            if (data.length > 0) {
+                currentUser = data[0];
                 modal.style.display = 'none';
                 initUserBtn();
-                renderContent('root');
+                await renderContent();
                 alert('登录成功！');
             } else {
                 alert('用户名或密码错误！');
@@ -1019,9 +712,18 @@
         });
 
         // 页面初始化
-        initUsers();
-        initUserBtn();
-        renderContent('root');
+        window.onload = async function() {
+            // 先检查Supabase是否初始化成功
+            if (typeof supabase === 'undefined') {
+                mainContent.innerHTML = '<div class="loading">云服务初始化失败，请刷新页面重试</div>';
+                return;
+            }
+
+            // 初始化用户数据
+            await initUsers();
+            initUserBtn();
+            renderContent();
+        }
     </script>
 </body>
 </html>
