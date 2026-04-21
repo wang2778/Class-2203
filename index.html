@@ -70,10 +70,12 @@
     <input type="file" id="globalFileInput" accept="image/*" multiple style="display: none;">
 
     <script>
+        // 仅声明一次Supabase
         const supabaseUrl = "https://lppazzibukrhtknhgexg.supabase.co";
         const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwcGF6emlidWtyaHRrbmhnZXhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDcyODksImV4cCI6MjA5MjMyMzI4OX0.CDZZCVDZaGOs9MTBSvHD78qg1smZMA74O9niZiOCsx0";
         const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
+        // 全局变量
         let currentUser = null, folderList = [], photoList = [], currentFolderId = 'root';
         const initUserList = [
             { username: '王泽恒', password: '123456', is_admin: true },
@@ -143,6 +145,7 @@
             { username: '冯旭连', password: '123456', is_admin: false }
         ];
 
+        // DOM元素
         const userBtn = document.getElementById('userBtn');
         const logoutBtn = document.getElementById('logoutBtn');
         const modal = document.getElementById('modal');
@@ -154,6 +157,7 @@
         const previewModal = document.getElementById('previewModal');
         const previewImg = document.getElementById('previewImg');
 
+        // 工具函数
         async function initUsers() {
             for (let initUser of initUserList) {
                 const { data } = await supabase.from('users').select('*').eq('username', initUser.username);
@@ -163,6 +167,7 @@
         async function loadFolders() { const { data } = await supabase.from('folders').select('*').eq('parentId', currentFolderId); folderList = data || []; }
         async function loadPhotos() { const { data } = await supabase.from('photos').select('*').eq('folderId', currentFolderId); photoList = data || []; }
 
+        // 渲染函数
         function renderOperateArea() {
             if(!currentUser) { operateArea.innerHTML = ''; return; }
             if (currentFolderId === 'root') {
@@ -172,7 +177,6 @@
                 operateArea.innerHTML = `<h3>${currentFolder.name}</h3><button class="btn btn-blue" id="backBtn">返回上级</button><button class="btn btn-orange" id="subCreateFolderBtn">新建子文件夹</button><button class="btn btn-green" id="subUploadBtn">上传图片到此文件夹</button>`;
             }
         }
-
         async function renderContent() {
             mainContent.innerHTML = '<div class="loading">加载中...</div>';
             if(!currentUser) { mainContent.innerHTML = `<div class="unlogin-tip"><div>请登录后查看班级相册内容</div><button id="toLoginBtn">立即登录</button></div>`; return; }
@@ -197,6 +201,7 @@
             mainContent.appendChild(gallery);
         }
 
+        // 事件监听
         document.addEventListener('click', async function(e) {
             const target = e.target;
             if(target.classList.contains('name-bar')) return;
@@ -215,7 +220,6 @@
             if(folderCard && !target.classList.contains('delete-btn')) { currentFolderId = folderCard.dataset.folderId; await renderContent(); return; }
             if(target.classList.contains('photo-img')) { previewImg.src = target.src; previewModal.style.display = 'flex'; return; }
         });
-
         globalFileInput.addEventListener('change', async function(e) {
             const files = e.target.files; const targetFolder = this.dataset.targetFolder || 'root';
             if (!files.length || !currentUser) return;
@@ -228,7 +232,6 @@
             }
             this.value = ''; await renderContent(); alert('上传成功！');
         });
-
         previewModal.addEventListener('click', function() { this.style.display = 'none'; });
         logoutBtn.addEventListener('click', function() { currentUser = null; currentFolderId = 'root'; initUserBtn(); renderContent(); alert('已退出登录！'); });
         closeModal.addEventListener('click', function() { modal.style.display = 'none'; });
@@ -240,11 +243,13 @@
             else alert('用户名或密码错误！');
         });
 
+        // 工具函数
         function initUserBtn() {
             if (currentUser) { userBtn.textContent = currentUser.username; logoutBtn.style.display = 'block'; }
             else { userBtn.textContent = '登录'; logoutBtn.style.display = 'none'; }
         }
 
+        // 页面初始化
         window.onload = async function() {
             if (typeof supabase === 'undefined') { mainContent.innerHTML = '<div class="loading">云服务初始化失败，请刷新页面重试</div>'; return; }
             await initUsers(); initUserBtn(); renderContent();
